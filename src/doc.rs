@@ -1,4 +1,6 @@
-use crate::fields::{string_or_list, Context, PublicKey, ServiceEndpoint, Subject};
+use crate::fields::{
+    string_or_list, Context, KeySetEntry, ServiceEndpoint, Subject, VerificationMethod,
+};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value};
@@ -10,17 +12,56 @@ use void::Void;
 pub struct Document {
     #[serde(rename = "@context", deserialize_with = "string_or_list")]
     context: Context,
+
     id: Subject,
+
     #[serde(skip_serializing_if = "String::is_empty", default)]
     created: String,
+
     #[serde(skip_serializing_if = "String::is_empty", default)]
     updated: String,
-    #[serde(rename = "publicKey", skip_serializing_if = "Vec::is_empty", default)]
-    public_key: Vec<PublicKey>,
+
+    #[serde(
+        rename = "verificationMethod",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    verification_method: Vec<VerificationMethod>,
+
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    authentication: Vec<PublicKey>,
+    authentication: Vec<KeySetEntry>,
+
+    #[serde(
+        rename = "assertionMethod",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    assertion_method: Vec<KeySetEntry>,
+
+    #[serde(
+        rename = "keyAgreement",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    key_agreement: Vec<KeySetEntry>,
+
+    #[serde(
+        rename = "capabilityInvocation",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    capability_invocation: Vec<KeySetEntry>,
+
+    #[serde(
+        rename = "capabilityDelegation",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    capability_delegation: Vec<KeySetEntry>,
+
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     service: Vec<ServiceEndpoint>,
+
     //#[serde(skip_serializing_if = "Proof::is_empty", default)]
     //pub proof: Proof,
     #[serde(flatten)]
@@ -34,8 +75,12 @@ impl Document {
             id: Subject::from_str(id).unwrap(),
             created: String::new(),
             updated: String::new(),
-            public_key: Vec::default(),
+            verification_method: Vec::default(),
             authentication: Vec::default(),
+            assertion_method: Vec::default(),
+            key_agreement: Vec::default(),
+            capability_invocation: Vec::default(),
+            capability_delegation: Vec::default(),
             service: Vec::default(),
             extra: IndexMap::default(),
         }
@@ -49,11 +94,11 @@ impl Document {
         &self.id
     }
 
-    pub fn public_key(&self) -> &Vec<PublicKey> {
-        &self.public_key
+    pub fn verification_method(&self) -> &Vec<VerificationMethod> {
+        &self.verification_method
     }
 
-    pub fn authentication(&self) -> &Vec<PublicKey> {
+    pub fn authentication(&self) -> &Vec<KeySetEntry> {
         &self.authentication
     }
 

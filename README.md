@@ -33,7 +33,7 @@ fn main() {
 Example of parsing a DID Document:
 ```rust
 use did_doc::{
-    fields::{PublicKeyEncoding, PublicKeyType},
+    fields::{PublicKeyEncoding, VerificationMethodType},
     Document
 };
 
@@ -50,7 +50,7 @@ fn main() {
 
     assert_eq!(doc.context().len(), 1);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 0);
     assert_eq!(doc.service().len(), 0);
 }

@@ -1,7 +1,7 @@
 extern crate did_doc as did;
 
 use did::{
-    fields::{PublicKeyEncoding, PublicKeyType},
+    fields::{KeySetEntry, PublicKeyEncoding, Subject, VerificationMethodType},
     Document,
 };
 
@@ -30,7 +30,7 @@ fn did_parse_document_0() {
     let doc = Document::from_str(&jstr).unwrap();
     assert_eq!(doc.context().len(), 1);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 0);
     assert_eq!(doc.service().len(), 0);
 
@@ -52,7 +52,7 @@ fn did_parse_document_1() {
     let doc = Document::from_str(&jstr).unwrap();
     assert_eq!(doc.context().len(), 2);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 0);
     assert_eq!(doc.service().len(), 0);
 
@@ -66,7 +66,7 @@ fn did_parse_document_2() {
     {
         "@context": ["https://w3id.org/did/v1", "https://w3id.org/security/v1"],
         "id": "did:example:123456789abcdefghi",
-        "publicKey": [{
+        "verificationMethod": [{
             "id": "did:example:123456789abcdefghi#keys-1",
             "type": "RsaVerificationKey2018",
             "controller": "did:example:123456789abcdefghi",
@@ -85,43 +85,59 @@ fn did_parse_document_2() {
     }
     "#;
 
-    let flat = r#"{"@context":["https://w3id.org/did/v1","https://w3id.org/security/v1"],"id":"did:example:123456789abcdefghi","publicKey":[{"id":"did:example:123456789abcdefghi#keys-1","type":"RsaVerificationKey2018","controller":"did:example:123456789abcdefghi","publicKeyPem":"-----BEGIN PUBLIC KEY...END PUBLIC KEY-----"},{"id":"did:example:123456789abcdefghi#keys-2","type":"Ed25519VerificationKey2018","controller":"did:example:pqrstuvwxyz0987654321","publicKeyBase58":"H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"},{"id":"did:example:123456789abcdefghi#keys-3","type":"EcdsaSecp256k1VerificationKey2019","controller":"did:example:123456789abcdefghi","publicKeyHex":"02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"}]}"#;
+    let flat = r#"{"@context":["https://w3id.org/did/v1","https://w3id.org/security/v1"],"id":"did:example:123456789abcdefghi","verificationMethod":[{"id":"did:example:123456789abcdefghi#keys-1","type":"RsaVerificationKey2018","controller":"did:example:123456789abcdefghi","publicKeyPem":"-----BEGIN PUBLIC KEY...END PUBLIC KEY-----"},{"id":"did:example:123456789abcdefghi#keys-2","type":"Ed25519VerificationKey2018","controller":"did:example:pqrstuvwxyz0987654321","publicKeyBase58":"H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"},{"id":"did:example:123456789abcdefghi#keys-3","type":"EcdsaSecp256k1VerificationKey2019","controller":"did:example:123456789abcdefghi","publicKeyHex":"02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"}]}"#;
 
     let doc = Document::from_str(&jstr).unwrap();
     assert_eq!(doc.context().len(), 2);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 3);
+    assert_eq!(doc.verification_method().len(), 3);
     assert_eq!(doc.authentication().len(), 0);
     assert_eq!(doc.service().len(), 0);
 
-    let k1 = &doc.public_key()[0];
+    let k1 = &doc.verification_method()[0];
     assert_eq!(k1.subject(), "did:example:123456789abcdefghi#keys-1");
-    assert_eq!(k1.kind(), PublicKeyType::RsaVerificationKey2018);
+    assert_eq!(k1.kind(), VerificationMethodType::RsaVerificationKey2018);
     assert_eq!(k1.controller(), "did:example:123456789abcdefghi");
-    assert_eq!(k1.reference(), false);
-    assert_eq!(k1.encoding(), PublicKeyEncoding::Pem);
+    assert_eq!(
+        k1.encoding(),
+        PublicKeyEncoding::PublicKeyPem("-----BEGIN PUBLIC KEY...END PUBLIC KEY-----".to_string())
+    );
     assert_eq!(
         k1.data().as_str(),
         "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----"
     );
 
-    let k2 = &doc.public_key()[1];
+    let k2 = &doc.verification_method()[1];
     assert_eq!(k2.subject(), "did:example:123456789abcdefghi#keys-2");
-    assert_eq!(k2.kind(), PublicKeyType::Ed25519VerificationKey2018);
+    assert_eq!(
+        k2.kind(),
+        VerificationMethodType::Ed25519VerificationKey2018
+    );
     assert_eq!(k2.controller(), "did:example:pqrstuvwxyz0987654321");
-    assert_eq!(k2.reference(), false);
-    assert_eq!(k2.encoding(), PublicKeyEncoding::Base58);
+    assert_eq!(
+        k2.encoding(),
+        PublicKeyEncoding::PublicKeyBase58(
+            "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV".to_string()
+        )
+    );
     assert_eq!(
         k2.data().as_str(),
         "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"
     );
 
-    let k3 = &doc.public_key()[2];
+    let k3 = &doc.verification_method()[2];
     assert_eq!(k3.subject(), "did:example:123456789abcdefghi#keys-3");
-    assert_eq!(k3.kind(), PublicKeyType::EcdsaSecp256k1VerificationKey2019);
+    assert_eq!(
+        k3.kind(),
+        VerificationMethodType::EcdsaSecp256k1VerificationKey2019
+    );
     assert_eq!(k3.controller(), "did:example:123456789abcdefghi");
-    assert_eq!(k3.reference(), false);
-    assert_eq!(k3.encoding(), PublicKeyEncoding::Hex);
+    assert_eq!(
+        k3.encoding(),
+        PublicKeyEncoding::PublicKeyHex(
+            "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71".to_string()
+        )
+    );
     assert_eq!(
         k3.data().as_str(),
         "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
@@ -149,39 +165,67 @@ fn did_parse_document_3() {
         ]
     }
     "#;
+    let empty_subject = Subject::new("");
 
     let flat = r#"{"@context":["https://w3id.org/did/v1","https://w3id.org/security/v1"],"id":"did:example:123456789abcdefghi","authentication":["did:example:123456789abcdefghi#keys-1","did:example:123456789abcdefghi#biometric-1",{"id":"did:example:123456789abcdefghi#keys-2","type":"Ed25519VerificationKey2018","controller":"did:example:123456789abcdefghi","publicKeyBase58":"H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"}]}"#;
 
     let doc = Document::from_str(&jstr).unwrap();
     assert_eq!(doc.context().len(), 2);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 3);
     assert_eq!(doc.service().len(), 0);
 
     let k1 = &doc.authentication()[0];
-    assert_eq!(k1.subject(), "did:example:123456789abcdefghi#keys-1");
-    assert_eq!(k1.kind(), PublicKeyType::UnknownKey);
-    assert_eq!(k1.controller(), "");
+    assert_eq!(
+        match k1 {
+            KeySetEntry::Reference(s) => &s,
+            KeySetEntry::Method(_) => &empty_subject,
+        },
+        "did:example:123456789abcdefghi#keys-1"
+    );
+    assert_eq!(k1.kind(), VerificationMethodType::UnknownKey);
     assert_eq!(k1.encoding(), PublicKeyEncoding::Unknown);
-    assert_eq!(k1.data(), "");
-    assert!(k1.reference());
 
     let k2 = &doc.authentication()[1];
+    assert_eq!(
+        match k2 {
+            KeySetEntry::Reference(s) => &s,
+            KeySetEntry::Method(_) => &empty_subject,
+        },
+        "did:example:123456789abcdefghi#biometric-1"
+    );
     assert_eq!(k2.subject(), "did:example:123456789abcdefghi#biometric-1");
-    assert_eq!(k1.kind(), PublicKeyType::UnknownKey);
-    assert_eq!(k1.controller(), "");
+    assert_eq!(k1.kind(), VerificationMethodType::UnknownKey);
     assert_eq!(k1.encoding(), PublicKeyEncoding::Unknown);
-    assert_eq!(k1.data(), "");
-    assert!(k2.reference());
 
     let k3 = &doc.authentication()[2];
     assert_eq!(k3.subject(), "did:example:123456789abcdefghi#keys-2");
-    assert_eq!(k3.kind(), PublicKeyType::Ed25519VerificationKey2018);
-    assert_eq!(k3.controller(), "did:example:123456789abcdefghi");
-    assert_eq!(k3.encoding(), PublicKeyEncoding::Base58);
-    assert_eq!(k3.data(), "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV");
-    assert_eq!(k3.reference(), false);
+    assert_eq!(
+        k3.kind(),
+        VerificationMethodType::Ed25519VerificationKey2018
+    );
+    let empty_subject = Subject::new("");
+    assert_eq!(
+        match k3 {
+            KeySetEntry::Method(vm) => vm.controller(),
+            _ => &empty_subject,
+        },
+        "did:example:123456789abcdefghi"
+    );
+    assert_eq!(
+        k3.encoding(),
+        PublicKeyEncoding::PublicKeyBase58(
+            "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV".to_string()
+        )
+    );
+    assert_eq!(
+        match k3 {
+            KeySetEntry::Method(vm) => vm.data(),
+            _ => "",
+        },
+        "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"
+    );
 
     let s = doc.to_string();
     assert_eq!(s.as_str(), flat);
@@ -240,7 +284,7 @@ fn did_parse_document_4() {
     let doc = Document::from_str(jstr).unwrap();
     assert_eq!(doc.context().len(), 2);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 0);
     assert_eq!(doc.service().len(), 8);
 
@@ -282,7 +326,7 @@ fn did_parse_document_5() {
     let doc = Document::from_str(&jstr).unwrap();
     assert_eq!(doc.context().len(), 1);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 0);
     assert_eq!(doc.service().len(), 1);
 
@@ -321,17 +365,34 @@ fn did_parse_document_6() {
     let doc = Document::from_str(jstr).unwrap();
     assert_eq!(doc.context().len(), 1);
     assert_eq!(doc.subject(), "did:example:123456789abcdefghi");
-    assert_eq!(doc.public_key().len(), 0);
+    assert_eq!(doc.verification_method().len(), 0);
     assert_eq!(doc.authentication().len(), 1);
     assert_eq!(doc.service().len(), 1);
 
     let a1 = &doc.authentication()[0];
     assert_eq!(a1.subject(), "did:example:123456789abcdefghi#keys-1");
-    assert_eq!(a1.kind(), PublicKeyType::RsaVerificationKey2018);
-    assert_eq!(a1.controller(), "did:example:123456789abcdefghi");
-    assert_eq!(a1.encoding(), PublicKeyEncoding::Pem);
-    assert_eq!(a1.data(), "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n");
-    assert_eq!(a1.reference(), false);
+    assert_eq!(a1.kind(), VerificationMethodType::RsaVerificationKey2018);
+    let empty_subject = Subject::new("");
+    assert_eq!(
+        match a1 {
+            KeySetEntry::Method(vm) => vm.controller(),
+            _ => &empty_subject,
+        },
+        "did:example:123456789abcdefghi"
+    );
+    assert_eq!(
+        a1.encoding(),
+        PublicKeyEncoding::PublicKeyPem(
+            "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n".to_string()
+        )
+    );
+    assert_eq!(
+        match a1 {
+            KeySetEntry::Method(vm) => vm.data(),
+            _ => "",
+        },
+        "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
+    );
 
     let s1 = &doc.service()[0];
     assert!(s1.context().is_empty());
